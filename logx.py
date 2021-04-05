@@ -1,10 +1,10 @@
 import json
-import joblib
+
 import shutil
 import numpy as np
 import os.path as osp, time, atexit, os
 
-
+print("ss")
 import json
 
 def convert_json(obj):
@@ -67,110 +67,61 @@ color2num = dict(
     crimson=38
 )
 
-from mpi4py import MPI
+
 import os, subprocess, sys
 import numpy as np
 
 
-def mpi_fork(n, bind_to_core=False):
-    """
-    Re-launches the current script with workers linked by MPI.
-
-    Also, terminates the original process that launched it.
-
-    Taken almost without modification from the Baselines function of the
-    `same name`_.
-
-    .. _`same name`: https://github.com/openai/baselines/blob/master/baselines/common/mpi_fork.py
-
-    Args:
-        n (int): Number of process to split into.
-
-        bind_to_core (bool): Bind each MPI process to a core.
-    """
-    if n <= 1:
-        return
-    if os.getenv("IN_MPI") is None:
-        env = os.environ.copy()
-        env.update(
-            MKL_NUM_THREADS="1",
-            OMP_NUM_THREADS="1",
-            IN_MPI="1"
-        )
-        args = ["mpirun", "-np", str(n)]
-        if bind_to_core:
-            args += ["-bind-to", "core"]
-        args += [sys.executable] + sys.argv
-        subprocess.check_call(args, env=env)
-        sys.exit()
 
 
-def msg(m, string=''):
-    print(('Message from %d: %s \t ' % (MPI.COMM_WORLD.Get_rank(), string)) + str(m))
 
 
-def proc_id():
-    """Get rank of calling process."""
-    return MPI.COMM_WORLD.Get_rank()
 
 
-def allreduce(*args, **kwargs):
-    return MPI.COMM_WORLD.Allreduce(*args, **kwargs)
 
 
-def num_procs():
-    """Count active MPI processes."""
-    return MPI.COMM_WORLD.Get_size()
 
 
-def broadcast(x, root=0):
-    MPI.COMM_WORLD.Bcast(x, root=root)
 
 
 def mpi_op(x, op):
     x, scalar = ([x], True) if np.isscalar(x) else (x, False)
     x = np.asarray(x, dtype=np.float32)
     buff = np.zeros_like(x, dtype=np.float32)
-    allreduce(x, buff, op=op)
+
     return buff[0] if scalar else buff
 
 
-def mpi_sum(x):
-    return mpi_op(x, MPI.SUM)
 
 
-def mpi_avg(x):
-    """Average a scalar or vector over MPI processes."""
-    return mpi_sum(x) / num_procs()
+
+
 
 
 def mpi_statistics_scalar(x, with_min_and_max=False):
     """
     Get mean/std and optional min/max of scalar x across MPI processes.
-
     Args:
         x: An array containing samples of the scalar to produce statistics
             for.
-
         with_min_and_max (bool): If true, return min and max of x in
             addition to mean and std.
     """
     x = np.array(x, dtype=np.float32)
-    global_sum, global_n = mpi_sum([np.sum(x), len(x)])
+    global_sum, global_n = ([np.sum(x), len(x)])
     mean = global_sum / global_n
 
-    global_sum_sq = mpi_sum(np.sum((x - mean) ** 2))
+    global_sum_sq =(np.sum((x - mean) ** 2))
     std = np.sqrt(global_sum_sq / global_n)  # compute global std
 
     if with_min_and_max:
-        global_min = mpi_op(np.min(x) if len(x) > 0 else np.inf, op=MPI.MIN)
-        global_max = mpi_op(np.max(x) if len(x) > 0 else -np.inf, op=MPI.MAX)
+        global_min = (np.min(x) if len(x) > 0 else np.inf)
+        global_max = (np.max(x) if len(x) > 0 else -np.inf)
         return mean, std, global_min, global_max
     return mean, std
 def colorize(string, color, bold=False, highlight=False):
     """
     Colorize a string.
-
     This function was originally written by John Schulman.
     """
     attr = []
@@ -184,42 +135,25 @@ def colorize(string, color, bold=False, highlight=False):
 def setup_logger_kwargs(exp_name, seed=None, data_dir=None, datestamp=False):
     """
     Sets up the output_dir for a logger and returns a dict for logger kwargs.
-
     If no seed is given and datestamp is false,
-
     ::
-
         output_dir = data_dir/exp_name
-
     If a seed is given and datestamp is false,
-
     ::
-
         output_dir = data_dir/exp_name/exp_name_s[seed]
-
     If datestamp is true, amend to
-
     ::
-
         output_dir = data_dir/YY-MM-DD_exp_name/YY-MM-DD_HH-MM-SS_exp_name_s[seed]
-
     You can force datestamp=True by setting ``FORCE_DATESTAMP=True`` in
     ``spinup/user_config.py``.
-
     Args:
-
         exp_name (string): Name for experiment.
-
         seed (int): Seed for random number generators used by experiment.
-
         data_dir (string): Path to folder where results should be saved.
             Default is the ``DEFAULT_DATA_DIR`` in ``spinup/user_config.py``.
-
         datestamp (bool): Whether to include a date and timestamp in the
             name of the save directory.
-
     Returns:
-
         logger_kwargs, a dict containing output_dir and exp_name.
     """
 
@@ -247,31 +181,13 @@ def setup_logger_kwargs(exp_name, seed=None, data_dir=None, datestamp=False):
 class Logger:
     """
     A general-purpose logger.
-
     Makes it easy to save diagnostics, hyperparameter configurations, the
     state of a training run, and the trained model.
     """
 
     def __init__(self, output_dir=None, output_fname='progress.txt', exp_name=None):
-        """
-        Initialize a Logger.
 
-        Args:
-            output_dir (string): A directory for saving results to. If
-                ``None``, defaults to a temp directory of the form
-                ``/tmp/experiments/somerandomnumber``.
 
-            output_fname (string): Name for the tab-separated-value file
-                containing metrics logged throughout a training run.
-                Defaults to ``progress.txt``.
-
-            exp_name (string): Experiment name. If you run multiple training
-                runs and give them all the same ``exp_name``, the plotter
-                will know to group them. (Use case: if you run the same
-                hyperparameter configuration with multiple random seeds, you
-                should give them all the same ``exp_name``.)
-        """
-        if proc_id() == 0:
             self.output_dir = output_dir or "/tmp/experiments/%i" % int(time.time())
             if osp.exists(self.output_dir):
                 print("Warning: Log dir %s already exists! Storing info there anyway." % self.output_dir)
@@ -280,23 +196,20 @@ class Logger:
             self.output_file = open(osp.join(self.output_dir, output_fname), 'w')
             atexit.register(self.output_file.close)
             print(colorize("Logging data to %s" % self.output_file.name, 'green', bold=True))
-        else:
-            self.output_dir = None
-            self.output_file = None
-        self.first_row = True
-        self.log_headers = []
-        self.log_current_row = {}
-        self.exp_name = exp_name
+
+            self.first_row = True
+            self.log_headers = []
+            self.log_current_row = {}
+            self.exp_name = exp_name
 
     def log(self, msg, color='green'):
         """Print a colorized message to stdout."""
-        if proc_id() == 0:
-            print(colorize(msg, color, bold=True))
+
+        print(colorize(msg, color, bold=True))
 
     def log_tabular(self, key, val):
         """
         Log a value of some diagnostic.
-
         Call this only once for each diagnostic quantity, each iteration.
         After using ``log_tabular`` to store values for each diagnostic,
         make sure to call ``dump_tabular`` to write them out to file and
@@ -312,72 +225,55 @@ class Logger:
     def save_config(self, config):
         """
         Log an experiment configuration.
-
         Call this once at the top of your experiment, passing in all important
         config vars as a dict. This will serialize the config to JSON, while
         handling anything which can't be serialized in a graceful way (writing
         as informative a string as possible).
-
         Example use:
-
         .. code-block:: python
-
             logger = EpochLogger(**logger_kwargs)
             logger.save_config(locals())
         """
         config_json = convert_json(config)
         if self.exp_name is not None:
             config_json['exp_name'] = self.exp_name
-        if proc_id() == 0:
-            output = json.dumps(config_json, separators=(',', ':\t'), indent=4, sort_keys=True)
-            print(colorize('Saving config:\n', color='cyan', bold=True))
-            print(output)
-            with open(osp.join(self.output_dir, "config.json"), 'w') as out:
+
+        output = json.dumps(config_json, separators=(',', ':\t'), indent=4, sort_keys=True)
+        print(colorize('Saving config:\n', color='cyan', bold=True))
+        print(output)
+        with open(osp.join(self.output_dir, "config.json"), 'w') as out:
                 out.write(output)
 
     def save_state(self, state_dict, itr=None):
         """
         Saves the state of an experiment.
-
         To be clear: this is about saving *state*, not logging diagnostics.
         All diagnostic logging is separate from this function. This function
         will save whatever is in ``state_dict``---usually just a copy of the
         environment---and the most recent parameters for the model you
         previously set up saving for with ``setup_tf_saver``.
-
         Call with any frequency you prefer. If you only want to maintain a
         single state and overwrite it at each call with the most recent
         version, leave ``itr=None``. If you want to keep all of the states you
         save, provide unique (increasing) values for 'itr'.
-
         Args:
             state_dict (dict): Dictionary containing essential elements to
                 describe the current state of training.
-
             itr: An int, or None. Current iteration of training.
         """
-        if proc_id() == 0:
-            fname = 'vars.pkl' if itr is None else 'vars%d.pkl' % itr
-            try:
-                joblib.dump(state_dict, osp.join(self.output_dir, fname))
-            except:
-                self.log('Warning: could not pickle state_dict.', color='red')
+        pass
 
     def setup_tf_saver(self, sess, inputs, outputs):
         """
         Set up easy model saving for tensorflow.
-
         Call once, after defining your computation graph but before training.
-
         Args:
             sess: The Tensorflow session in which you train your computation
                 graph.
-
             inputs (dict): A dictionary that maps from keys of your choice
                 to the tensorflow placeholders that serve as inputs to the
                 computation graph. Make sure that *all* of the placeholders
                 needed for your outputs are included!
-
             outputs (dict): A dictionary that maps from keys of your choice
                 to the outputs from your computation graph.
         """
@@ -389,12 +285,8 @@ class Logger:
 
 
     def dump_tabular(self):
-        """
-        Write all of the diagnostics from the current iteration.
 
-        Writes both to stdout, and to the output file.
-        """
-        if proc_id() == 0:
+
             vals = []
             key_lens = [len(key) for key in self.log_headers]
             max_key_len = max(15, max(key_lens))
@@ -413,32 +305,24 @@ class Logger:
                     self.output_file.write("\t".join(self.log_headers) + "\n")
                 self.output_file.write("\t".join(map(str, vals)) + "\n")
                 self.output_file.flush()
-        self.log_current_row.clear()
-        self.first_row = False
+            self.log_current_row.clear()
+            self.first_row = False
 
 
 class EpochLogger(Logger):
     """
     A variant of Logger tailored for tracking average values over epochs.
-
     Typical use case: there is some quantity which is calculated many times
     throughout an epoch, and at the end of the epoch, you would like to
     report the average / std / min / max value of that quantity.
-
     With an EpochLogger, each time the quantity is calculated, you would
     use
-
     .. code-block:: python
-
         epoch_logger.store(NameOfQuantity=quantity_value)
-
     to load it into the EpochLogger's state. Then at the end of the epoch, you
     would use
-
     .. code-block:: python
-
         epoch_logger.log_tabular(NameOfQuantity, **options)
-
     to record the desired values.
     """
 
@@ -449,7 +333,6 @@ class EpochLogger(Logger):
     def store(self, **kwargs):
         """
         Save something into the epoch_logger's current state.
-
         Provide an arbitrary number of keyword arguments with numerical
         values.
         """
@@ -461,19 +344,15 @@ class EpochLogger(Logger):
     def log_tabular(self, key, val=None, with_min_and_max=False, average_only=False):
         """
         Log a value or possibly the mean/std/min/max values of a diagnostic.
-
         Args:
             key (string): The name of the diagnostic. If you are logging a
                 diagnostic whose state has previously been saved with
                 ``store``, the key here has to match the key you used there.
-
             val: A value for the diagnostic. If you have previously saved
                 values for this key via ``store``, do *not* provide a ``val``
                 here.
-
             with_min_and_max (bool): If true, log min and max values of the
                 diagnostic over the epoch.
-
             average_only (bool): If true, do not log the standard deviation
                 of the diagnostic over the epoch.
         """
