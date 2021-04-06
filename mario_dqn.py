@@ -27,7 +27,7 @@ TARGET_REPLACE_ITER = 1
 # simulator steps for start learning
 LEARN_START = int(1e+3)
 # (prioritized) experience replay memory size
-MEMORY_CAPACITY = int(1e+5)
+MEMORY_CAPACITY = int(5e+5)
 # simulator steps for learning interval
 LEARN_FREQ = 4
 
