@@ -258,7 +258,7 @@ start_time = time.time()
 s = np.array(env.reset())
 print("s shape",s.shape)
 # print(s.shape)
-s=np.squeeze(s,2)
+
 # for step in tqdm(range(1, STEP_NUM//N_ENVS+1)):
 for step in range(1, STEP_NUM // N_ENVS + 1):
     a = dqn.choose_action(s, EPSILON)
@@ -266,7 +266,7 @@ for step in range(1, STEP_NUM // N_ENVS + 1):
 
     # take action and get next state
     s_, r, done, infos = env.step(a)
-    s_ = np.squeeze(s_, 2)
+    
     # log arrange
     for info in infos:
         maybeepinfo = info.get('episode')
