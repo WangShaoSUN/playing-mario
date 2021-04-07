@@ -256,6 +256,7 @@ start_time = time.time()
 
 # env reset
 s = np.array(env.reset())
+print("s shape",s.shape)
 # print(s.shape)
 s=np.squeeze(s,2)
 # for step in tqdm(range(1, STEP_NUM//N_ENVS+1)):
