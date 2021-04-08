@@ -212,7 +212,7 @@ class SubprocVecEnv(VecEnv):
         self.closed = True
 def wrap_cover(env_name,seed):
     def wrap_():
-        env=gym_super_mario_bros.make("SuperMarioBros-1-1-v0")
+        env=gym_super_mario_bros.make(env_name)
         env = JoypadSpace(env, [["right"], ["right", "A"]])
         env.seed(seed)
         env = Monitor(env, './')
