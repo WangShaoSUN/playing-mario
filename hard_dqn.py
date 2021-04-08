@@ -47,7 +47,7 @@ GAMMA = 0.99
 # visualize for agent playing
 RENDERING = False
 # openai gym env name
-ENV_NAME = args.games + 'NoFrameskip-v4'
+ENV_NAME = "SuperMarioBros-"+args.games + '-v0'
 env = SubprocVecEnv([wrap_cover(ENV_NAME, args.seed + i) for i in range(N_ENVS)])
 N_ACTIONS = env.action_space.n
 N_STATES = env.observation_space.shape
@@ -224,7 +224,7 @@ class DQN(object):
 
 
 dqn = DQN()
-logdir = './DQN_hard/%s' % args.games + '/%i' % int(time.time())
+logdir = './DQN_hard/%s' % ENV_NAME + '/%i' % int(time.time())
 
 logger_kwargs = setup_logger_kwargs(args.games, args.seed, data_dir=logdir)
 logger = EpochLogger(**logger_kwargs)
