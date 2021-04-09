@@ -298,8 +298,8 @@ for step in range(1, STEP_NUM // N_ENVS + 1):
         logger.log_tabular('time', time_interval)
         logger.log_tabular("loss", with_min_and_max=True)
         logger.dump_tabular()
-        save model
-        # dqn.save_model()
+#         save model
+        dqn.save_model()
         # pkl_file = open(RESULT_PATH, 'wb')
         # pickle.dump(np.array(result), pkl_file)
         # pkl_file.close()
