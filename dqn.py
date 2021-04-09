@@ -16,8 +16,9 @@ from env_wrapper import  wrap_cover, SubprocVecEnv
 from mvg_ import *
 import argparse
 parser = argparse.ArgumentParser(description='Some settings of the experiment.')
-parser.add_argument('--games', type=str,default="mario_dqn", help='name of the games. for example: Breakout')
+parser.add_argument('--games', type=str,default="SuperMarioBros-1-2-v0", help='name of the games. for example: Breakout')
 parser.add_argument('--seed', type=int,default=10, help='seed of the games')
+parser.add_argument('--n_env', type=int,default=32, help='seed of the games')
 args = parser.parse_args()
 args.games = "".join(args.games)
 
@@ -31,7 +32,7 @@ MEMORY_CAPACITY = int(5e+5)
 # simulator steps for learning interval
 LEARN_FREQ = 4
 
-N_ENVS = 16
+N_ENVS = args.n_env
 # Total simulation step
 STEP_NUM = int((2e+7)+2)
 # gamma for MDP
@@ -39,7 +40,7 @@ GAMMA = 0.99
 # visualize for agent playing
 RENDERING = False
 # openai gym env name
-ENV_NAME = args.games+'NoFrameskip-v4'
+ENV_NAME = args.games
 env = SubprocVecEnv([wrap_cover(ENV_NAME,args.seed+i) for i in range(N_ENVS)])
 N_ACTIONS = env.action_space.n
 N_STATES = env.observation_space.shape
