@@ -68,7 +68,7 @@ RESULT_PATH = './data/plots/dqn_result_o_'+args.games+'.pkl'
 
 class random_agent(object):
     def __init__(self):
-        pass
+        self.memory_counter = 0
         
         
     def choose_action(self, x, EPSILON):
@@ -80,12 +80,13 @@ class random_agent(object):
         action = np.random.randint(0, N_ACTIONS, (x.shape[0]))
         return action
 
-    
+    def store_transition(self, ):
+        self.memory_counter += 1
 
    
 
 
-dqn = random_agent()
+agent = random_agent()
 logdir = './random_agent/%s' % args.games + '/%i' % int(time.time())
 
 logger_kwargs = setup_logger_kwargs(args.games, args.seed, data_dir=logdir)
@@ -111,12 +112,14 @@ print("s.shape:",s.shape)
 
 # for step in tqdm(range(1, STEP_NUM//N_ENVS+1)):
 for step in range(1, STEP_NUM // N_ENVS + 1):
-    a = dqn.choose_action(s, EPSILON)
+    a = agent.choose_action(s, EPSILON)
     # print('a',a)
 
     # take action and get next state
     s_, r, done, infos = env.step(a)
     # log arrange
+    for i in range(N_ENVS):
+      agent.store_transition(self, )
     for info in infos:
         maybeepinfo = info.get('episode')
         if maybeepinfo: epinfobuf.append(maybeepinfo)
@@ -128,10 +131,10 @@ for step in range(1, STEP_NUM // N_ENVS + 1):
         # calc mean return
         mean_100_ep_return = round(np.mean([epinfo['r'] for epinfo in epinfobuf]), 2)
 #         result.append(mean_100_ep_return)
-        logger.log_tabular('Epoch', t // steps_per_epoch)
+#         logger.log_tabular('Epoch', t // steps_per_epoch)
         # print log
         
-#         logger.log_tabular('TotalEnvInteracts', dqn.memory_counter)
+        logger.log_tabular('TotalEnvInteracts', dqn.memory_counter)
         logger.log_tabular('AverageEpRet', mean_100_ep_return)
         logger.log_tabular('MinEpRet', np.min(period_results))
         logger.log_tabular('MaxEpRet', np.max(period_results))
