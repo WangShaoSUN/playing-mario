@@ -119,7 +119,7 @@ for step in range(1, STEP_NUM // N_ENVS + 1):
     s_, r, done, infos = env.step(a)
     # log arrange
     for i in range(N_ENVS):
-      agent.store_transition(self, )
+      agent.store_transition()
     for info in infos:
         maybeepinfo = info.get('episode')
         if maybeepinfo: epinfobuf.append(maybeepinfo)
