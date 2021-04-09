@@ -73,10 +73,7 @@ class random_agent(object):
         
     def choose_action(self, x, EPSILON):
         # x:state
-        x = torch.FloatTensor(x)
-        # print(x.shape)
-        if USE_GPU:
-            x = x.cuda()
+        
 
       
             # random exploration case
