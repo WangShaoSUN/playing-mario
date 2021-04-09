@@ -77,7 +77,7 @@ class random_agent(object):
 
       
             # random exploration case
-        action = np.random.randint(0, N_ACTIONS, (x.size(0)))
+        action = np.random.randint(0, N_ACTIONS, (x.shape[0]))
         return action
 
     
@@ -127,11 +127,11 @@ for step in range(1, STEP_NUM // N_ENVS + 1):
         period_results = [epinfo['r'] for epinfo in epinfobuf]
         # calc mean return
         mean_100_ep_return = round(np.mean([epinfo['r'] for epinfo in epinfobuf]), 2)
-        result.append(mean_100_ep_return)
-        # logger.log_tabular('Epoch', t // steps_per_epoch)
+#         result.append(mean_100_ep_return)
+        logger.log_tabular('Epoch', t // steps_per_epoch)
         # print log
         
-        logger.log_tabular('TotalEnvInteracts', dqn.memory_counter)
+#         logger.log_tabular('TotalEnvInteracts', dqn.memory_counter)
         logger.log_tabular('AverageEpRet', mean_100_ep_return)
         logger.log_tabular('MinEpRet', np.min(period_results))
         logger.log_tabular('MaxEpRet', np.max(period_results))
@@ -139,7 +139,7 @@ for step in range(1, STEP_NUM // N_ENVS + 1):
        
         logger.dump_tabular()
 #         save model
-        dqn.save_model()
+#         dqn.save_model()
         # pkl_file = open(RESULT_PATH, 'wb')
         # pickle.dump(np.array(result), pkl_file)
         # pkl_file.close()
