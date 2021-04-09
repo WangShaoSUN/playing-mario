@@ -134,7 +134,7 @@ for step in range(1, STEP_NUM // N_ENVS + 1):
 #         logger.log_tabular('Epoch', t // steps_per_epoch)
         # print log
         
-        logger.log_tabular('TotalEnvInteracts', dqn.memory_counter)
+        logger.log_tabular('TotalEnvInteracts', agent.memory_counter)
         logger.log_tabular('AverageEpRet', mean_100_ep_return)
         logger.log_tabular('MinEpRet', np.min(period_results))
         logger.log_tabular('MaxEpRet', np.max(period_results))
