@@ -19,6 +19,7 @@ parser = argparse.ArgumentParser(description='Some settings of the experiment.')
 parser.add_argument('--games', type=str,default="SuperMarioBros-1-2-v0", help='name of the games. for example: Breakout')
 parser.add_argument('--seed', type=int,default=10, help='seed of the games')
 parser.add_argument('--n_env', type=int,default=32, help='seed of the games')
+parser.add_argument('--lr', type=float,default=0.0001, help='seed of the games')
 args = parser.parse_args()
 args.games = "".join(args.games)
 
@@ -50,7 +51,7 @@ print('USE GPU: '+str(USE_GPU))
 # mini-batch size
 BATCH_SIZE = 64
 # learning rage
-LR = 1e-4
+LR = args.lr
 # epsilon-greedy
 EPSILON = 1.0
 
@@ -68,6 +69,35 @@ if osp.exists("./data/model"):
     print(" directory exist")
 else:
     os.makedirs("./data/model")
+    
+class NoisyLinear(nn.Linear):
+  def __init__(self, in_features, out_features, sigma_init=0.017, bias=True):
+    super(NoisyLinear, self).__init__(in_features, out_features, bias=True)  # TODO: Adapt for no bias
+    # µ^w and µ^b reuse self.weight and self.bias
+    self.sigma_init = sigma_init
+    self.sigma_weight = Parameter(torch.Tensor(out_features, in_features))  # σ^w
+    self.sigma_bias = Parameter(torch.Tensor(out_features))  # σ^b
+    self.register_buffer('epsilon_weight', torch.zeros(out_features, in_features))
+    self.register_buffer('epsilon_bias', torch.zeros(out_features))
+    self.reset_parameters()
+
+  def reset_parameters(self):
+    if hasattr(self, 'sigma_weight'):  # Only init after all params added (otherwise super().__init__() fails)
+      init.uniform(self.weight, -math.sqrt(3 / self.in_features), math.sqrt(3 / self.in_features))
+      init.uniform(self.bias, -math.sqrt(3 / self.in_features), math.sqrt(3 / self.in_features))
+      init.constant(self.sigma_weight, self.sigma_init)
+      init.constant(self.sigma_bias, self.sigma_init)
+
+  def forward(self, input):
+    return F.linear(input, self.weight + self.sigma_weight * Variable(self.epsilon_weight), self.bias + self.sigma_bias * Variable(self.epsilon_bias))
+
+  def sample_noise(self):
+    self.epsilon_weight = torch.randn(self.out_features, self.in_features)
+    self.epsilon_bias = torch.randn(self.out_features)
+
+  def remove_noise(self):
+    self.epsilon_weight = torch.zeros(self.out_features, self.in_features)
+    self.epsilon_bias = torch.zeros(self.out_features)
 class ConvNet(nn.Module):
     def __init__(self):
         super(ConvNet, self).__init__()
@@ -81,10 +111,10 @@ class ConvNet(nn.Module):
             nn.Conv2d(64, 64, kernel_size=3, stride=1),
             nn.ReLU(),
         )
-        self.fc = nn.Linear(7 * 7 * 64, 512)
+        self.fc = NoisyLinear(7 * 7 * 64, 512)
 #         self.fc = NoisyLayer_with_MVG(7 * 7 * 64, 512)
         # action value
-        self.fc_q = nn.Linear(512, N_ACTIONS)
+        self.fc_q = NoisyLinear(512, N_ACTIONS)
 #         self.fc_q = NoisyLayer_with_MVG(512, N_ACTIONS)
         # 初始化参数值
         for m in self.modules():
