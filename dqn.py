@@ -18,7 +18,7 @@ import argparse
 parser = argparse.ArgumentParser(description='Some settings of the experiment.')
 parser.add_argument('--games', type=str,default="SuperMarioBros-1-2-v0", help='name of the games. for example: Breakout')
 parser.add_argument('--seed', type=int,default=10, help='seed of the games')
-parser.add_argument('--n_env', type=int,default=32, help='seed of the games')
+parser.add_argument('--n_env', type=int,default=16, help='seed of the games')
 parser.add_argument('--lr', type=float,default=0.0001, help='seed of the games')
 args = parser.parse_args()
 args.games = "".join(args.games)
@@ -111,10 +111,10 @@ class ConvNet(nn.Module):
             nn.Conv2d(64, 64, kernel_size=3, stride=1),
             nn.ReLU(),
         )
-        self.fc = NoisyLinear(7 * 7 * 64, 512)
+        self.fc = nn.Linear(7 * 7 * 64, 512)
 #         self.fc = NoisyLayer_with_MVG(7 * 7 * 64, 512)
         # action value
-        self.fc_q = NoisyLinear(512, N_ACTIONS)
+        self.fc_q = nn.Linear(512, N_ACTIONS)
 #         self.fc_q = NoisyLayer_with_MVG(512, N_ACTIONS)
         # 初始化参数值
         for m in self.modules():
@@ -253,6 +253,7 @@ logger = EpochLogger(**logger_kwargs)
 kwargs = {
 
     'seed': args.seed,
+    'lr"args.lr,
 }
 logger.save_config(kwargs)
 # model load with check
@@ -333,7 +334,7 @@ for step in range(1, STEP_NUM // N_ENVS + 1):
         logger.log_tabular("loss", with_min_and_max=True)
         logger.dump_tabular()
 #         save model
-        dqn.save_model()
+        #dqn.save_model()
         # pkl_file = open(RESULT_PATH, 'wb')
         # pickle.dump(np.array(result), pkl_file)
         # pkl_file.close()
