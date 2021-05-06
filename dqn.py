@@ -253,7 +253,7 @@ logger = EpochLogger(**logger_kwargs)
 kwargs = {
 
     'seed': args.seed,
-    'lr"args.lr,
+    'lr': args.lr,
 }
 logger.save_config(kwargs)
 # model load with check
