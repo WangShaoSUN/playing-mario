@@ -13,91 +13,69 @@ import time
 from collections import deque
 import matplotlib.pyplot as plt
 from env_wrapper import  wrap_cover, SubprocVecEnv
-from mvg_ import *
+
+# 处理输入参数（游戏名称）
 import argparse
+
 parser = argparse.ArgumentParser(description='Some settings of the experiment.')
-parser.add_argument('--games', type=str,default="SuperMarioBros-1-2-v0", help='name of the games. for example: Breakout')
-parser.add_argument('--seed', type=int,default=10, help='seed of the games')
-parser.add_argument('--n_env', type=int,default=16, help='seed of the games')
-parser.add_argument('--lr', type=float,default=0.0001, help='seed of the games')
+parser.add_argument('--games', type=str, default="SuperMarioBros-1-2-v0", help='name of the games. for example: Breakout')
+parser.add_argument('--seed', type=int, default=0, help='seed of the games')
+parser.add_argument('--save_freq',type=int, default=1e3, help='seed of the games')
+parser.add_argument('--lr',type=float, default=1e-4, help='seed of the games')
+parser.add_argument('--n_env',type=int, default=32, help='seed of the games')
 args = parser.parse_args()
 args.games = "".join(args.games)
 
+'''DQN settings'''
+# sequential images to define state
 STATE_LEN = 4
 # target policy sync interval
 TARGET_REPLACE_ITER = 1
 # simulator steps for start learning
 LEARN_START = int(1e+3)
 # (prioritized) experience replay memory size
-MEMORY_CAPACITY = int(5e+5)
+MEMORY_CAPACITY = int(1e+5)
 # simulator steps for learning interval
 LEARN_FREQ = 4
 
+'''Environment Settings'''
+# number of environments for C51
 N_ENVS = args.n_env
 # Total simulation step
-STEP_NUM = int((2e+7)+2)
+STEP_NUM = int(2e+7)+2
 # gamma for MDP
 GAMMA = 0.99
 # visualize for agent playing
 RENDERING = False
 # openai gym env name
 ENV_NAME = args.games
-env = SubprocVecEnv([wrap_cover(ENV_NAME,args.seed+i) for i in range(N_ENVS)])
+env = SubprocVecEnv([wrap_cover(ENV_NAME,args.seed + i) for i in range(N_ENVS)])
 N_ACTIONS = env.action_space.n
 N_STATES = env.observation_space.shape
 
+'''Training settings'''
+# check GPU usage
 USE_GPU = torch.cuda.is_available()
-print('USE GPU: '+str(USE_GPU))
+print('USE GPU: ' + str(USE_GPU))
 # mini-batch size
 BATCH_SIZE = 64
 # learning rage
-LR = args.lr
+LR = 1e-4
 # epsilon-greedy
 EPSILON = 1.0
 
+'''Save&Load Settings'''
+# check save/load
 SAVE = True
 LOAD = False
 # save frequency
 SAVE_FREQ = int(1e+3)
 # paths for predction net, target net, result log
-PRED_PATH = './data/model/dqn_pred_net_o_'+args.games+'.pkl'
-TARGET_PATH = './data/model/dqn_target_net_o_'+args.games+'.pkl'
-RESULT_PATH = './data/plots/dqn_result_o_'+args.games+'.pkl'
+PRED_PATH = './data/model/dqn_pred_net_o_' + args.games + '.pkl'
+TARGET_PATH = './data/model/dqn_target_net_o_' + args.games + '.pkl'
+RESULT_PATH = './data/plots/dqn_result_o_' + args.games + '.pkl'
 
-import os.path as osp
-if osp.exists("./data/model"):
-    print(" directory exist")
-else:
-    os.makedirs("./data/model")
-    
-class NoisyLinear(nn.Linear):
-  def __init__(self, in_features, out_features, sigma_init=0.017, bias=True):
-    super(NoisyLinear, self).__init__(in_features, out_features, bias=True)  # TODO: Adapt for no bias
-    # µ^w and µ^b reuse self.weight and self.bias
-    self.sigma_init = sigma_init
-    self.sigma_weight = Parameter(torch.Tensor(out_features, in_features))  # σ^w
-    self.sigma_bias = Parameter(torch.Tensor(out_features))  # σ^b
-    self.register_buffer('epsilon_weight', torch.zeros(out_features, in_features))
-    self.register_buffer('epsilon_bias', torch.zeros(out_features))
-    self.reset_parameters()
 
-  def reset_parameters(self):
-    if hasattr(self, 'sigma_weight'):  # Only init after all params added (otherwise super().__init__() fails)
-      init.uniform(self.weight, -math.sqrt(3 / self.in_features), math.sqrt(3 / self.in_features))
-      init.uniform(self.bias, -math.sqrt(3 / self.in_features), math.sqrt(3 / self.in_features))
-      init.constant(self.sigma_weight, self.sigma_init)
-      init.constant(self.sigma_bias, self.sigma_init)
-
-  def forward(self, input):
-    return F.linear(input, self.weight + self.sigma_weight * Variable(self.epsilon_weight), self.bias + self.sigma_bias * Variable(self.epsilon_bias))
-
-  def sample_noise(self):
-    self.epsilon_weight = torch.randn(self.out_features, self.in_features)
-    self.epsilon_bias = torch.randn(self.out_features)
-
-  def remove_noise(self):
-    self.epsilon_weight = torch.zeros(self.out_features, self.in_features)
-    self.epsilon_bias = torch.zeros(self.out_features)
 class ConvNet(nn.Module):
     def __init__(self):
         super(ConvNet, self).__init__()
@@ -112,10 +90,10 @@ class ConvNet(nn.Module):
             nn.ReLU(),
         )
         self.fc = nn.Linear(7 * 7 * 64, 512)
-#         self.fc = NoisyLayer_with_MVG(7 * 7 * 64, 512)
+
         # action value
         self.fc_q = nn.Linear(512, N_ACTIONS)
-#         self.fc_q = NoisyLayer_with_MVG(512, N_ACTIONS)
+
         # 初始化参数值
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -238,6 +216,7 @@ class DQN(object):
         # loss
         loss = self.loss_function(q_eval, q_target)
         logger.store(loss=loss)
+        logger.store(mean_Q=q_target.mean().item())
         # backprop loss
         self.optimizer.zero_grad()
         loss.backward()
@@ -246,14 +225,17 @@ class DQN(object):
 
 
 dqn = DQN()
-logdir = './Noisy_DQN/%s' % args.games + '/%i' % int(time.time())
+logdir = './Noisy_dqn/%s' % args.games + '/%i' % int(time.time())
 
 logger_kwargs = setup_logger_kwargs(args.games, args.seed, data_dir=logdir)
 logger = EpochLogger(**logger_kwargs)
 kwargs = {
 
     'seed': args.seed,
-    'lr': args.lr,
+    "target Update_interval":TARGET_REPLACE_ITER,
+    "savw_interval":args.save_freq,
+     "epilon ":0.01,
+    "lr":args.lr,
 }
 logger.save_config(kwargs)
 # model load with check
@@ -276,8 +258,9 @@ start_time = time.time()
 
 # env reset
 s = np.array(env.reset())
-print("s.shape:",s.shape)
 s=np.squeeze(s,2)
+# print(s.shape)
+
 # for step in tqdm(range(1, STEP_NUM//N_ENVS+1)):
 for step in range(1, STEP_NUM // N_ENVS + 1):
     a = dqn.choose_action(s, EPSILON)
@@ -316,11 +299,10 @@ for step in range(1, STEP_NUM // N_ENVS + 1):
     if step % SAVE_FREQ == 0:
         # check time interval
         time_interval = round(time.time() - start_time, 2)
-        period_results = [epinfo['r'] for epinfo in epinfobuf]
         # calc mean return
+        period_results = [epinfo['r'] for epinfo in epinfobuf]
         mean_100_ep_return = round(np.mean([epinfo['r'] for epinfo in epinfobuf]), 2)
         result.append(mean_100_ep_return)
-        # logger.log_tabular('Epoch', t // steps_per_epoch)
         # print log
         print('Used Step: ', dqn.memory_counter,
               '| EPS: ', round(EPSILON, 3),
@@ -332,15 +314,17 @@ for step in range(1, STEP_NUM // N_ENVS + 1):
         logger.log_tabular('MinEpRet', np.min(period_results))
         logger.log_tabular('MaxEpRet', np.max(period_results))
         logger.log_tabular('time', time_interval)
+        logger.log_tabular("mean_Q", with_min_and_max=True)
         logger.log_tabular("loss", with_min_and_max=True)
         logger.dump_tabular()
-#         save model
-        #dqn.save_model()
+        # save model
+        # dqn.save_model()
         # pkl_file = open(RESULT_PATH, 'wb')
         # pickle.dump(np.array(result), pkl_file)
         # pkl_file.close()
 
     s = s_
+
     if RENDERING:
         env.render()
 print("The training is done!")
