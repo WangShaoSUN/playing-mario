@@ -16,8 +16,9 @@ from env_wrapper import  wrap_cover, SubprocVecEnv
 from mvg_ import *
 import argparse
 parser = argparse.ArgumentParser(description='Some settings of the experiment.')
-parser.add_argument('--games', type=str,default="mario", help='name of the games. for example: Breakout')
-parser.add_argument('--seed', type=int,default=10, help='seed of the games')
+parser.add_argument('--games', type=str,default="SuperMarioBros-3-3-v0", help='name of the games. for example: Breakout')
+parser.add_argument('--seed', type=int,default=11, help='seed of the games')
+parser.add_argument('--n_env', type=int,default=16, help='seed of the games')
 args = parser.parse_args()
 args.games = "".join(args.games)
 
@@ -27,11 +28,11 @@ TARGET_REPLACE_ITER = 1
 # simulator steps for start learning
 LEARN_START = int(1e+3)
 # (prioritized) experience replay memory size
-MEMORY_CAPACITY = int(5e+5)
+MEMORY_CAPACITY = int(1e+5)
 # simulator steps for learning interval
 LEARN_FREQ = 4
 
-N_ENVS = 16
+N_ENVS = args.n_env
 # Total simulation step
 STEP_NUM = int((2e+7)+2)
 # gamma for MDP
@@ -49,7 +50,7 @@ print('USE GPU: '+str(USE_GPU))
 # mini-batch size
 BATCH_SIZE = 64
 # learning rage
-LR = 1e-4
+LR = 2e-4
 # epsilon-greedy
 EPSILON = 1.0
 
@@ -58,10 +59,14 @@ LOAD = False
 # save frequency
 SAVE_FREQ = int(1e+3)
 # paths for predction net, target net, result log
-PRED_PATH = './data/model/dqn_pred_net_o_'+args.games+'.pkl'
-TARGET_PATH = './data/model/dqn_target_net_o_'+args.games+'.pkl'
+PRED_PATH = './data/model_1/dqn_pred_net_o_1'+args.games+'.pkl'
+TARGET_PATH = './data/model_1/dqn_target_net_o_1'+args.games+'.pkl'
 RESULT_PATH = './data/plots/dqn_result_o_'+args.games+'.pkl'
-
+import os.path as osp
+if osp.exists("./data/model_1"):
+    print(" directory exist")
+else:
+    os.makedirs("./data/model_1")
 
 class ConvNet(nn.Module):
     def __init__(self):
@@ -211,7 +216,7 @@ class DQN(object):
 
 
 dqn = DQN()
-logdir = './MVG/%s' % args.games + '/%i' % int(time.time())
+logdir = './MVG_DQN/%s' % args.games + '/%i' % int(time.time())
 
 logger_kwargs = setup_logger_kwargs(args.games, args.seed, data_dir=logdir)
 logger = EpochLogger(**logger_kwargs)
@@ -220,7 +225,7 @@ kwargs = {
     'seed': args.seed,
 }
 logger.save_config(kwargs)
-# model load with check
+# model_1 load with check
 if LOAD and os.path.isfile(PRED_PATH) and os.path.isfile(TARGET_PATH):
     dqn.load_model()
     pkl_file = open(RESULT_PATH, 'rb')
@@ -234,14 +239,14 @@ else:
 print('Collecting experience...')
 
 # episode step for accumulate reward
-epinfobuf = deque(maxlen=100)
+epinfobuf = deque(maxlen=50)
 # check learning time
 start_time = time.time()
 
 # env reset
 s = np.array(env.reset())
-# print(s.shape)
-
+print(s.shape)
+s=np.squeeze(s,2)
 # for step in tqdm(range(1, STEP_NUM//N_ENVS+1)):
 for step in range(1, STEP_NUM // N_ENVS + 1):
     a = dqn.choose_action(s, EPSILON)
@@ -249,6 +254,8 @@ for step in range(1, STEP_NUM // N_ENVS + 1):
 
     # take action and get next state
     s_, r, done, infos = env.step(a)
+    # print(s_.shape)
+    s_ = np.squeeze(s_, 2)
     # log arrange
     for info in infos:
         maybeepinfo = info.get('episode')
@@ -297,8 +304,8 @@ for step in range(1, STEP_NUM // N_ENVS + 1):
         logger.log_tabular('time', time_interval)
         logger.log_tabular("loss", with_min_and_max=True)
         logger.dump_tabular()
-        # save model
-        # dqn.save_model()
+        # save model_1
+        dqn.save_model()
         # pkl_file = open(RESULT_PATH, 'wb')
         # pickle.dump(np.array(result), pkl_file)
         # pkl_file.close()
